@@ -1,0 +1,43 @@
+{
+  "name": "nodewatch-mimic-lite",
+  "description": "A minimalistic Node.js watcher that mimics the behavior of Nodewatch.",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@4.9.2",
+  "scripts": {
+    "build": "tsc",
+    "oneshot": "npx tsx src/oneshotCron.ts",
+    "dev": "npx tsx watch src/nodeWatchMimicLiteServer.ts",
+    "start:web": "sh scripts/start-web.sh",
+    "stop:web": "pkill -f 'tsx src/nodeWatchMimicLiteServer.ts' || true",
+    "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
+    "lint:fix": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
+    "format": "prettier --check \"src/**/*.ts\"",
+    "format:fix": "prettier --write \"src/**/*.ts\""
+  },
+  "dependencies": {
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "node-cron": "^4.2.1",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5",
+    "@types/node": "^24.2.1",
+    "@typescript-eslint/eslint-plugin": "^8.39.1",
+    "@typescript-eslint/parser": "^8.39.1",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.33.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.6.2",
+    "prettier-plugin-organize-imports": "^4.2.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.9.2"
+  },
+  "volta": {
+    "node": "22.18.0",
+    "npm": "11.5.2"
+  }
+}
