@@ -5,7 +5,7 @@ const logger = getLogger('web')
 
 const router = Router()
 
-router.use('/symbol', symbolRouter)
+router.use('/api/symbol', symbolRouter)
 
 // 404ハンドラー
 router.use(/.*/, (req, res) => {
