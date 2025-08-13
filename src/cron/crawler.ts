@@ -4,24 +4,88 @@ import { URL } from 'url'
 import { NodeWatchPeer } from '../types/nodeWatch.types.js'
 import { ChainInfo, NodeInfo, NodePeer, NodeServer } from '../types/rest.types.js'
 import { getLogger } from '../utils/logger.js'
-const logger = getLogger('cron')
 
 dotenv.config()
 
-/**
- * 信頼できるノードのリスト
- */
-const TRUSTED_NODES = (process.env.TRUSTED_NODES || '').split(',').map((url) => url.trim())
+const defaultLogger = getLogger('cron')
+const defaultWriteFile = writeFileSync
+
+// 設定値
+export const DEFAULT_CHUNK_NUM = 10
+export const DEFAULT_TIMEOUT_MS = 3000
+export const HEIGHT_THRESHOLD = 20
 
 /**
- * チャンクサイズ
+ * Crawlerの依存関係
  */
-const CHUNK_NUM = Number(process.env.CHUNK_NUM) || 10
+export interface CrawlerDeps {
+  logger?: ReturnType<typeof getLogger>
+  fetchFn?: typeof fetch
+  writeFile?: typeof writeFileSync
+  trustedNodes?: string[]
+  chunkNum?: number
+  timeoutMs?: number
+  heightThreshold?: number
+}
 
 /**
- * タイムアウト時間
+ * 信頼できるノードのリストを取得する
+ * @param env 環境変数
+ * @returns 信頼できるノードのURLの配列
  */
-const TIMEOUT_MS = Number(process.env.TIMEOUT_MS) || 3000
+export function getTrustedNodes(env = process.env): string[] {
+  return (env.TRUSTED_NODES || '')
+    .split(',')
+    .map((url) => url.trim())
+    .filter(Boolean)
+}
+
+/**
+ * チャンク数を取得する
+ * @param env 環境変数
+ * @returns チャンク数
+ */
+export function getChunkNum(env = process.env): number {
+  return Number(env.CHUNK_NUM) || DEFAULT_CHUNK_NUM
+}
+
+/**
+ * タイムアウト時間を取得する
+ * @param env 環境変数
+ * @returns タイムアウト時間（ミリ秒）
+ */
+export function getTimeoutMs(env = process.env): number {
+  return Number(env.TIMEOUT_MS) || DEFAULT_TIMEOUT_MS
+}
+
+/**
+ * 高さの閾値を取得する
+ * @returns 高さの閾値
+ */
+export function getHeightThreshold(): number {
+  return HEIGHT_THRESHOLD
+}
+
+// chunk分割ユーティリティ
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const res: T[][] = []
+  for (let i = 0; i < arr.length; i += size) {
+    res.push(arr.slice(i, i + size))
+  }
+  return res
+}
+
+/**
+ * 中央値を計算する
+ * @param nums 数値の配列
+ * @returns 中央値、または配列が空の場合はnull
+ */
+function calcMedian(nums: number[]): number | null {
+  if (!nums.length) return null
+  const sorted = [...nums].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
+}
 
 /**
  * REST APIからデータを取得する
@@ -32,12 +96,17 @@ const TIMEOUT_MS = Number(process.env.TIMEOUT_MS) || 3000
 async function fetchNodeRest(
   url: string,
   path: string,
+  fetchFn: typeof fetch,
+  logger: ReturnType<typeof getLogger>,
+  timeoutMs: number,
 ): Promise<ChainInfo | NodeInfo | NodePeer[] | NodeServer | null> {
   const parsedUrl = new URL(path, url)
   try {
     logger.info(`Fetching from ${parsedUrl}`)
-    // await new Promise((resolve) => setTimeout(resolve, 100))
-    const response = await fetch(parsedUrl.toString())
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+    const response = await fetchFn(parsedUrl.toString(), { signal: controller.signal })
+    clearTimeout(timeout)
     if (!response.ok) {
       logger.warn(`Failed to fetch from ${parsedUrl}: ${response.statusText}`)
       return null
@@ -55,50 +124,76 @@ async function fetchNodeRest(
  * @param nodePeer 情報を取得する NodePeer
  * @returns NodeWatchPeer 情報、または取得に失敗した場合は null
  */
-async function fetchNodeWatchPeer(nodePeer: NodePeer): Promise<NodeWatchPeer | null> {
-  // タイムアウト(ms)
+async function fetchNodeWatchPeer(
+  nodePeer: NodePeer,
+  fetchFn: typeof fetch,
+  logger: ReturnType<typeof getLogger>,
+  timeoutMs: number,
+): Promise<NodeWatchPeer | null> {
   let protocol = 'https'
   let port = '3001'
 
-  // タイムアウト付きPromise
-  function withTimeout<T>(promise: Promise<T>): Promise<T | null> {
+  async function withTimeout<T>(promise: Promise<T>): Promise<T | null> {
     return Promise.race([
       promise,
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), TIMEOUT_MS)),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
     ])
   }
 
   try {
-    // /chain/info取得 (https)
     const chainInfoHttps = withTimeout(
-      fetchNodeRest(`${protocol}://${nodePeer.host}:${port}`, '/chain/info'),
+      fetchNodeRest(
+        `${protocol}://${nodePeer.host}:${port}`,
+        '/chain/info',
+        fetchFn,
+        logger,
+        timeoutMs,
+      ),
     )
     let chainInfo = (await chainInfoHttps) as ChainInfo | null
 
-    // https失敗時はhttpで再試行
     if (chainInfo === null) {
       logger.warn(`Node Peer is not reachable: ${nodePeer.host}`)
       protocol = 'http'
       port = '3000'
       chainInfo = (await withTimeout(
-        fetchNodeRest(`${protocol}://${nodePeer.host}:${port}`, '/chain/info'),
+        fetchNodeRest(
+          `${protocol}://${nodePeer.host}:${port}`,
+          '/chain/info',
+          fetchFn,
+          logger,
+          timeoutMs,
+        ),
       )) as ChainInfo | null
       if (chainInfo === null) return null
     }
 
-    // /node/info, /node/server を並列取得
     const nodeInfoStart = Date.now()
     const [nodeInfo, nodeServer] = await Promise.all([
-      withTimeout(fetchNodeRest(`${protocol}://${nodePeer.host}:${port}`, '/node/info')),
-      withTimeout(fetchNodeRest(`${protocol}://${nodePeer.host}:${port}`, '/node/server')),
+      withTimeout(
+        fetchNodeRest(
+          `${protocol}://${nodePeer.host}:${port}`,
+          '/node/info',
+          fetchFn,
+          logger,
+          timeoutMs,
+        ),
+      ),
+      withTimeout(
+        fetchNodeRest(
+          `${protocol}://${nodePeer.host}:${port}`,
+          '/node/server',
+          fetchFn,
+          logger,
+          timeoutMs,
+        ),
+      ),
     ])
     const nodeInfoResponseTime = Date.now() - nodeInfoStart
     if (nodeInfo === null || nodeServer === null) return null
 
-    // nodeServer取得時間は nodeInfo取得と同じタイミングで計測
     const responseTime = nodeInfoResponseTime
 
-    // NodeWatchPeer情報を作成
     const nodeWatchPeer: NodeWatchPeer = {
       balance: 0,
       endpoint: `${protocol}://${nodePeer.host}:${port}`,
@@ -153,13 +248,23 @@ function toHexDotString(num: number): string {
 /**
  * メイン処理
  */
-export async function crawler() {
+export async function crawler({
+  logger = defaultLogger,
+  fetchFn = fetch,
+  writeFile = defaultWriteFile,
+  trustedNodes = getTrustedNodes(),
+  chunkNum = getChunkNum(),
+  timeoutMs = getTimeoutMs(),
+  heightThreshold = getHeightThreshold(),
+}: CrawlerDeps = {}): Promise<void> {
   logger.info('Crawler is starting...')
-  logger.info(`Trusted nodes: ${TRUSTED_NODES.join(', ')}`)
+  logger.info(`Trusted nodes: ${trustedNodes.join(', ')}`)
 
   // 各ノードからpeersを取得
   const allPeers = (
-    await Promise.all(TRUSTED_NODES.map((url) => fetchNodeRest(url, '/node/peers')))
+    await Promise.all(
+      trustedNodes.map((url) => fetchNodeRest(url, '/node/peers', fetchFn, logger, timeoutMs)),
+    )
   ).flat() as NodePeer[]
 
   // hostで重複排除
@@ -167,33 +272,29 @@ export async function crawler() {
 
   logger.info(`Unique node peers count: ${uniqueNodePeers.length}`)
 
-  // chunkNum個ずつ並列で処理（.envから取得、なければ10）
+  // chunkNum個ずつ並列で処理
   const nodeWatchPeers: NodeWatchPeer[] = []
-  for (let i = 0; i < uniqueNodePeers.length; i += CHUNK_NUM) {
-    const chunk = uniqueNodePeers.slice(i, i + CHUNK_NUM)
-    const results = await Promise.all(chunk.map(fetchNodeWatchPeer))
+  for (const chunk of chunkArray(uniqueNodePeers, chunkNum)) {
+    const results = await Promise.all(
+      chunk.map((peer) => fetchNodeWatchPeer(peer, fetchFn, logger, timeoutMs)),
+    )
     nodeWatchPeers.push(...results.filter((peer): peer is NodeWatchPeer => peer !== null))
   }
 
   // nodeWatchPeersからheightの中央値を計算
-  const heights = nodeWatchPeers
-    .map((peer) => Number(peer && peer.height))
-    .filter((h) => !isNaN(h))
-    .sort((a, b) => a - b)
-  let medianHeight: number | null = null
-  if (heights.length > 0) {
-    const mid = Math.floor(heights.length / 2)
-    medianHeight = heights.length % 2 === 0 ? (heights[mid - 1] + heights[mid]) / 2 : heights[mid]
+  const heights = nodeWatchPeers.map((peer) => Number(peer && peer.height)).filter((h) => !isNaN(h))
+  const medianHeight = calcMedian(heights)
+  if (medianHeight !== null) {
     logger.info(`Median height: ${medianHeight}`)
   } else {
     logger.error('No valid heights available to calculate median. 全てのpeer.height取得に失敗')
   }
 
-  // height中央値-20以下のノードを除外
+  // height中央値-閾値以下のノードを除外
   const filteredNodeWatchPeers = nodeWatchPeers.filter((peer) => {
     if (medianHeight === null) return true
     const h = Number(peer && peer.height)
-    return !isNaN(h) && h > medianHeight - 20
+    return !isNaN(h) && h > medianHeight - heightThreshold
   })
 
   // レスポンスタイムが速い順にソート
@@ -203,5 +304,5 @@ export async function crawler() {
   const nodeWatchPeersJson = JSON.stringify(filteredNodeWatchPeers, undefined, 2)
 
   // publicに保存
-  writeFileSync('public/nodeWatchPeers.json', nodeWatchPeersJson)
+  writeFile('public/nodeWatchPeers.json', nodeWatchPeersJson)
 }

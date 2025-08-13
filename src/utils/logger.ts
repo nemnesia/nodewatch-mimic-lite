@@ -66,7 +66,18 @@ function getLogger(category: 'web' | 'cron' | string = 'app'): winston.Logger {
         ),
       }),
     ],
+
   })
+
+  // transportのnew/rotateイベントでlogger.infoを呼ぶ
+  if (typeof transport.on === 'function') {
+    transport.on('new', (filename) => {
+      logger.info(`New log file created: ${filename}`)
+    })
+    transport.on('rotate', (oldFilename, newFilename) => {
+      logger.info(`Log rotated from ${oldFilename} to ${newFilename}`)
+    })
+  }
 
   // 起動時にログディレクトリとファイルの情報を出力
   logger.info(`Log directory: ${logDirPath}`)

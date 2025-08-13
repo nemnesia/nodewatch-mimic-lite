@@ -19,3 +19,5 @@ node_modules
 # project固有
 .env
 logs
+coverage
+custom_logs

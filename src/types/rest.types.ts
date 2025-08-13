@@ -5,7 +5,7 @@ export interface ChainInfo {
   latestFinalizedBlock: {
     finalizationEpoch: number
     finalizationPoint: number
-    height: number
+    height: string
     hash: string
   }
 }
@@ -22,17 +22,7 @@ export interface NodeInfo {
   nodePublicKey: string
 }
 
-export interface NodePeer {
-  version: number
-  publicKey: string
-  networkGenerationHashSeed: string
-  roles: number
-  port: number
-  networkIdentifier: number
-  host: string
-  friendlyName: string
-  nodePublicKey: string
-}
+export interface NodePeer extends NodeInfo {}
 
 export interface NodeServer {
   serverInfo: {
