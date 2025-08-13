@@ -1,5 +1,5 @@
-#! /bin/bash
+#!/bin/sh
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR/.."
 npx tsx src/oneshotCron.ts
