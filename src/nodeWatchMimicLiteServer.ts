@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000
 
 app.listen(PORT, () => {
   logger.info(`Server running`)
-  logger.info(`- http://localhost:${PORT}/symbol/height`)
-  logger.info(`- http://localhost:${PORT}/symbol/nodes/peer`)
-  logger.info(`- http://localhost:${PORT}/symbol/nodes/api`)
+  logger.info(`- http://localhost:${PORT}/api/symbol/height`)
+  logger.info(`- http://localhost:${PORT}/api/symbol/nodes/peer`)
+  logger.info(`- http://localhost:${PORT}/api/symbol/nodes/api`)
 })
