@@ -38,13 +38,13 @@ crontab -e
 ```
 
 ```cron
-*/10 * * * * /usr/bin/bash /path/to/nodewatch-mimic-lite/scripts/crawler.sh
+*/10 * * * * /usr/bin/sh /path/to/nodewatch-mimic-lite/scripts/crawler.sh
 ```
 
 voltaなどを使用している場合は環境変数を設定します。
 
 ```cron
-*/10 * * * * PATH=$HOME/.volta/bin:$PATH /usr/bin/bash /path/to/nodewatch-mimic-lite/scripts/crawler.sh
+*/10 * * * * PATH=$HOME/.volta/bin:$PATH /usr/bin/sh /path/to/nodewatch-mimic-lite/scripts/crawler.sh
 ```
 
 初回はデータが無いのでクローラーを手動で起動しておいた方がよいでしょう。
