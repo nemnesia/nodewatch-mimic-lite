@@ -64,7 +64,7 @@ yarn start:web
 ## 停止方法
 
 ```bash
-yarn stop:server
+yarn stop:web
 ```
 
 ## ライセンス
