@@ -30,7 +30,7 @@ NodeWatchを模倣した、最小構成のNode.jsアプリです。
 nodewatch = https://nwmimic.nemnesia.com
 ```
 
-## サーバーのインストール方法
+## サーバーへのインストール方法
 
 ### 必要要件
 
