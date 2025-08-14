@@ -1,5 +1,6 @@
 #!/bin/sh
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
-nohup npx tsx src/nodeWatchMimicLiteServer.ts >/dev/null 2>&1 &
+cd "$(dirname "$0")"
+cd ..
+SERVER_PATH="$(pwd)/src/nodeWatchMimicLiteServer.ts"
+nohup npx tsx "$SERVER_PATH" >/dev/null 2>&1 &

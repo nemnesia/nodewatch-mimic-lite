@@ -10,11 +10,13 @@
     "oneshot": "npx tsx src/oneshotCron.ts",
     "dev": "npx tsx watch src/nodeWatchMimicLiteServer.ts",
     "start:web": "sh scripts/start-web.sh",
-    "stop:web": "pkill -f 'tsx src/nodeWatchMimicLiteServer.ts' || true",
+    "stop:web": "sh scripts/stop-web.sh",
+    "status:web": "sh scripts/status-web.sh",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\"",
     "lint:fix": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "format": "prettier --check \"src/**/*.ts\"",
     "format:fix": "prettier --write \"src/**/*.ts\"",
+    "echo": "pwd",
     "test": "vitest"
   },
   "dependencies": {

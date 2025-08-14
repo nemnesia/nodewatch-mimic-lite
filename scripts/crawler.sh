@@ -1,5 +1,6 @@
 #!/bin/sh
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-cd "$SCRIPT_DIR/.."
-npx tsx src/oneshotCron.ts
+cd "$(dirname "$0")"
+cd ..
+CRON_PATH="$(pwd)/src/oneshotCron.ts"
+npx tsx "$CRON_PATH"
