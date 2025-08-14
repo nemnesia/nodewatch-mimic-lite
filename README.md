@@ -41,11 +41,7 @@ nodewatch = https://nwmimic.nemnesia.com
 
 ```bash
 yarn install
-```
-
-または
-
-```bash
+# または
 npm install
 ```
 
@@ -83,6 +79,8 @@ scripts/crawler.sh
 
 ```bash
 yarn start:web
+# または
+npm run start:web
 ```
 
 デフォルトでは `http://localhost:3000` で起動します。
@@ -91,12 +89,16 @@ yarn start:web
 
 ```bash
 yarn stop:web
+# または
+npm run stop:web
 ```
 
 ### 起動確認
 
 ```bash
 yarn status:web
+# または
+npm run status:web
 ```
 
 ##
