@@ -196,7 +196,7 @@ async function fetchNodeWatchPeer(
 
     const nodeWatchPeer: NodeWatchPeer = {
       balance: 0,
-      endpoint: `${protocol}://${nodePeer.host}:${port}`,
+      endpoint: `http://${nodePeer.host}:3000`,
       finalizedEpoch: chainInfo.latestFinalizedBlock.finalizationEpoch,
       finalizedHash: chainInfo.latestFinalizedBlock.hash,
       finalizedHeight: Number(chainInfo.latestFinalizedBlock.height),
