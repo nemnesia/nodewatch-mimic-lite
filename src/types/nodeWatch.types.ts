@@ -33,6 +33,11 @@ export interface NodeWatchHeight {
   height: number
 }
 
+export interface NodeWatchPeersP2p {
+  _info: string
+  knownPeers: NodeWatchKnownPeer[]
+}
+
 export interface NodeWatchKnownPeer {
   publicKey: string
   endpoint: {

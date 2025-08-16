@@ -1,7 +1,7 @@
 import { Request, Response } from 'express'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
-import { NodeWatchKnownPeer } from '../types/nodeWatch.types.js'
+import { NodeWatchKnownPeer, NodeWatchPeersP2p } from '../types/nodeWatch.types.js'
 
 export async function handleNodesPeersP2p(req: Request, res: Response): Promise<void> {
   try {
@@ -9,7 +9,7 @@ export async function handleNodesPeersP2p(req: Request, res: Response): Promise<
     const data = await readFile(filePath, 'utf-8')
     const parsedData = JSON.parse(data)
 
-    const peersP2p = []
+    const knownPeers = []
     let count = 0;
     for (const peer of parsedData) {
       if (count >= 10) break;
@@ -45,8 +45,13 @@ export async function handleNodesPeersP2p(req: Request, res: Response): Promise<
           },
         }
 
-        peersP2p.push(knownPeer)
+        knownPeers.push(knownPeer)
       }
+    }
+
+    const peersP2p: NodeWatchPeersP2p = {
+      _info: 'this file contains a list of peers',
+      knownPeers: knownPeers
     }
 
     res.type('json').send(peersP2p)
