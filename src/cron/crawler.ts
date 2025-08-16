@@ -210,6 +210,8 @@ async function fetchNodeWatchPeer(
       restVersion: (nodeServer as NodeServer).serverInfo.restVersion,
       roles: (nodeInfo as NodeInfo).roles,
       version: toHexDotString((nodeInfo as NodeInfo).version),
+      host: nodePeer.host,
+      port: nodePeer.port,
       responseTime,
     }
     return nodeWatchPeer

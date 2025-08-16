@@ -23,10 +23,24 @@ export interface NodeWatchPeer {
     lon: number
     region: string
   }
+  host: string
+  port: number
   responseTime?: number
 }
 
 export interface NodeWatchHeight {
   finalizedHeight: number
   height: number
+}
+
+export interface NodeWatchKnownPeer {
+  publicKey: string
+  endpoint: {
+    host: string
+    port: number
+  }
+  metadata: {
+    name: string
+    roles: string
+  }
 }
